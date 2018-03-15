@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/spf13/viper"
 	"github.com/thomas-fossati/trafic/config"
@@ -22,7 +23,10 @@ type StatusReport struct {
 
 type RunnersMap map[string]runner.Runner
 
-var R RunnersMap
+var (
+	R RunnersMap
+	M sync.Mutex
+)
 
 func NewLogger(tag string) (*log.Logger, error) {
 	return log.New(os.Stderr, tag, log.LstdFlags|log.LUTC|log.Lshortfile), nil
@@ -109,7 +113,9 @@ func sched(flows []config.FlowConfig, log *log.Logger, done chan StatusReport,
 			log.Fatalf("cannot start %s %s: %v", role, flow.Label, err)
 		}
 
+		M.Lock()
 		R[flow.Label] = *r
+		M.Unlock()
 
 		// Start watchdog for this iperf3 instance
 		go watchdog(*r, flow.Label, done)
@@ -119,10 +125,12 @@ func sched(flows []config.FlowConfig, log *log.Logger, done chan StatusReport,
 func watchdog(r runner.Runner, label string, done chan StatusReport) {
 	err := r.Wait()
 	if err != nil {
-		log.Printf("cannot reap %s %s: %v", r.Role, label, err)
+		log.Printf("reaping %s %s: %v", r.Role, label, err)
 	}
 
+	M.Lock()
 	delete(R, label)
+	M.Unlock()
 
 	done <- StatusReport{label, r.Role, err}
 }
@@ -142,16 +150,26 @@ func wait(done chan StatusReport) error {
 
 			log.Printf("%v %s finished ok", s.Role, s.Label)
 
-			if len(R) == 0 {
+			M.Lock()
+			left := len(R)
+			M.Unlock()
+
+			if left == 0 {
 				log.Printf("all %v(s) finished ok", s.Role)
 				return nil
 			}
 
-			log.Printf("%d %v(s) to go", len(R), s.Role)
+			log.Printf("%d %v(s) to go", left, s.Role)
 		}
 	}
 }
 
 func tearDownRunners() {
-	log.Printf("TODO(tho) tearDownRunners")
+	M.Lock()
+	defer M.Unlock()
+
+	for k, v := range R {
+		log.Printf("killing %s", k)
+		v.Kill()
+	}
 }
