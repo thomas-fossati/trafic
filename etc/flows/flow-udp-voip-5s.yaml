@@ -3,7 +3,7 @@ label: udp-voip-5s
 collector: http://logstash:12345/
 
 client:
-  when:
+  at:
     - 5s
     - 10s
     - 15s
@@ -19,7 +19,7 @@ client:
     target-bitrate: 63901
 
 server:
-  when:
+  at:
     - 1s
   config:
     server-port: 5001

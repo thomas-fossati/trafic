@@ -8,12 +8,12 @@ import (
 )
 
 type FlowClient struct {
-	When   []time.Duration `yaml:"when"` // time.ParseDuration
+	At     []time.Duration `yaml:"at"` // time.ParseDuration
 	Config ClientConfig    `yaml:"config"`
 }
 
 type FlowServer struct {
-	When   []time.Duration `yaml:"when"` // time.ParseDuration
+	At     []time.Duration `yaml:"at"` // time.ParseDuration
 	Config ServerConfig    `yaml:"config"`
 }
 

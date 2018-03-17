@@ -80,12 +80,12 @@ func configurerForRole(role runner.Role, flow config.FlowConfig) config.Configur
 	return &flow.Server.Config
 }
 
-func whenForRole(role runner.Role, flow config.FlowConfig) []time.Duration {
+func atForRole(role runner.Role, flow config.FlowConfig) []time.Duration {
 	if role == runner.RoleClient {
-		return flow.Client.When
+		return flow.Client.At
 	}
 
-	return flow.Server.When
+	return flow.Server.At
 }
 
 func run(role runner.Role) {
@@ -117,7 +117,7 @@ func setupRunners(flows FlowConfigs, log *log.Logger, role runner.Role) (Runners
 	var runners Runners
 
 	for _, flow := range flows {
-		for _, at := range whenForRole(role, flow) {
+		for _, at := range atForRole(role, flow) {
 			cfg := configurerForRole(role, flow)
 			runner, err := runner.NewRunner(role, log, at, flow.Label, cfg)
 			if err != nil {
@@ -148,6 +148,7 @@ func sched(runners Runners, log *log.Logger, done chan StatusReport, role runner
 	last := 0
 	finished := false
 
+	// TODO(tho) tick frequency from config
 	for now := range time.Tick(100 * time.Millisecond) {
 		for i := last; i < len(runners); i++ {
 			runner := runners[i]

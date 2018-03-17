@@ -5,7 +5,7 @@ collector: http://logstash:12345/
 
 client:
   # as time.Duration (see time.ParseDuration() for the format)
-  when:
+  at:
     - 10s
     - 20s
   config:
@@ -18,7 +18,7 @@ client:
     time-s: 5
 
 server:
-  when:
+  at:
     - 5s
   config:
     json: true
