@@ -25,6 +25,10 @@ type StatusReport struct {
 type Runners []runner.Runner
 type FlowConfigs []config.FlowConfig
 
+const (
+	DefaultSchedFrequency = (100 * time.Millisecond)
+)
+
 // RunnersMap maps a flow label (which MUST be unique in a given traffic mix)
 // to the associated iperf3 runnable instance on one side of the flow
 type RunnersMap map[string]runner.Runner
@@ -132,7 +136,20 @@ func setupRunners(flows FlowConfigs, log *log.Logger, role runner.Role) (Runners
 	return runners, nil
 }
 
+func schedFreq(f string) (time.Duration, error) {
+	if f == "" {
+		return DefaultSchedFrequency, nil
+	}
+
+	return time.ParseDuration(f)
+}
+
 func sched(runners Runners, log *log.Logger, done chan StatusReport, role runner.Role) {
+	tickFreq, err := schedFreq(viper.GetString(""))
+	if err != nil {
+		log.Fatalf("cannot set the scheduler tick frequency: %v", err)
+	}
+
 	R = make(RunnersMap)
 
 	// runners MUST be ordered by deadline for the scheduler to work
@@ -148,8 +165,7 @@ func sched(runners Runners, log *log.Logger, done chan StatusReport, role runner
 	last := 0
 	finished := false
 
-	// TODO(tho) tick frequency from config
-	for now := range time.Tick(100 * time.Millisecond) {
+	for now := range time.Tick(tickFreq) {
 		for i := last; i < len(runners); i++ {
 			runner := runners[i]
 
