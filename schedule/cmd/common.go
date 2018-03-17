@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/thomas-fossati/trafic/config"
@@ -21,6 +22,11 @@ type StatusReport struct {
 	Error error
 }
 
+type Runners []runner.Runner
+type FlowConfigs []config.FlowConfig
+
+// RunnersMap maps a flow label (which MUST be unique in a given traffic mix)
+// to the associated iperf3 runnable instance on one side of the flow
 type RunnersMap map[string]runner.Runner
 
 var (
@@ -32,14 +38,14 @@ func NewLogger(tag string) (*log.Logger, error) {
 	return log.New(os.Stderr, tag, log.LstdFlags|log.LUTC|log.Lshortfile), nil
 }
 
-func loadFlows(dir string) ([]config.FlowConfig, error) {
+func loadFlows(dir string) (FlowConfigs, error) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Printf("cannot read dir: %s: %v", dir, err)
 		return nil, err
 	}
 
-	var flows []config.FlowConfig
+	var flows FlowConfigs
 
 	for _, file := range files {
 		if strings.HasPrefix(file.Name(), ".") {
@@ -60,21 +66,29 @@ func loadFlows(dir string) ([]config.FlowConfig, error) {
 	return flows, nil
 }
 
-func sortFlowsByDeadline(flows []config.FlowConfig) {
-	sort.Slice(flows, func(i, j int) bool {
-		return flows[i].When[0] < flows[j].When[0]
+func sortRunnersByDeadline(runners Runners) {
+	sort.Slice(runners, func(i, j int) bool {
+		return runners[i].At < runners[j].At
 	})
 }
 
 func configurerForRole(role runner.Role, flow config.FlowConfig) config.Configurer {
 	if role == runner.RoleClient {
-		return &flow.ClientCfg
+		return &flow.Client.Config
 	}
 
-	return &flow.ServerCfg
+	return &flow.Server.Config
 }
 
-func runners(role runner.Role) {
+func whenForRole(role runner.Role, flow config.FlowConfig) []time.Duration {
+	if role == runner.RoleClient {
+		return flow.Client.When
+	}
+
+	return flow.Server.When
+}
+
+func run(role runner.Role) {
 	log, err := NewLogger(fmt.Sprintf("[%s] ", viper.GetString("log.tag")))
 	if err != nil {
 		log.Fatalf("cannot create logger: %v", err)
@@ -85,40 +99,90 @@ func runners(role runner.Role) {
 		log.Fatalf("cannot load flows: %v", err)
 	}
 
-	sortFlowsByDeadline(flows)
+	runners, err := setupRunners(flows, log, role)
+	if err != nil {
+		log.Fatalf("cannot load flows: %v", err)
+	}
 
 	done := make(chan StatusReport)
 
-	go sched(flows, log, done, role)
+	go sched(runners, log, done, role)
 
 	if err = wait(done); err != nil {
 		log.Printf("waiting: %v", err)
 	}
 }
 
-func sched(flows []config.FlowConfig, log *log.Logger, done chan StatusReport,
-	role runner.Role) {
-	R = make(RunnersMap)
+func setupRunners(flows FlowConfigs, log *log.Logger, role runner.Role) (Runners, error) {
+	var runners Runners
 
 	for _, flow := range flows {
-		cfg := configurerForRole(role, flow)
+		for _, at := range whenForRole(role, flow) {
+			cfg := configurerForRole(role, flow)
+			runner, err := runner.NewRunner(role, log, at, flow.Label, cfg)
+			if err != nil {
+				log.Printf("cannot create %s %s: %v", role, flow.Label, err)
+				return nil, err
+			}
 
-		r, err := runner.NewRunner(role, log, cfg)
-		if err != nil {
-			log.Fatalf("cannot create %s %s: %v", role, flow.Label, err)
+			runners = append(runners, *runner)
+		}
+	}
+
+	return runners, nil
+}
+
+func sched(runners Runners, log *log.Logger, done chan StatusReport, role runner.Role) {
+	R = make(RunnersMap)
+
+	// runners MUST be ordered by deadline for the scheduler to work
+	sortRunnersByDeadline(runners)
+
+	// runner          [0]    [1][2][3]         [4]   [5]
+	//   |--------------O------O--O--O-----------O-----O---->
+	// ticks   ^     ^     ^     ^     ^     ^     ^     ^
+	//
+	// Every 100ms, walk the list of runners that have not been scheduled yet
+	// and pull out those whose deadline is expired.
+	epoch := time.Now()
+	last := 0
+	finished := false
+
+	for now := range time.Tick(100 * time.Millisecond) {
+		for i := last; i < len(runners); i++ {
+			runner := runners[i]
+
+			if time.Since(epoch) > runner.At {
+				log.Printf("%v -> deadline elapsed for %s", now, runner.Label)
+
+				err := runner.Start()
+				if err != nil {
+					log.Fatalf("cannot start %s %s: %v", role, runner.Label, err)
+				}
+
+				M.Lock()
+				R[runner.Label] = runner
+				M.Unlock()
+
+				// Start watchdog for this iperf3 instance
+				go watchdog(runner, runner.Label, done)
+
+				if i == len(runners)-1 {
+					// All runners have been scheduled, job done
+					finished = true
+					break
+				}
+			} else {
+				// Set a mark for where we need to restart and break out to the
+				// ticker
+				last = i
+				break
+			}
 		}
 
-		err = r.Start()
-		if err != nil {
-			log.Fatalf("cannot start %s %s: %v", role, flow.Label, err)
+		if finished {
+			break
 		}
-
-		M.Lock()
-		R[flow.Label] = *r
-		M.Unlock()
-
-		// Start watchdog for this iperf3 instance
-		go watchdog(*r, flow.Label, done)
 	}
 }
 
@@ -155,8 +219,9 @@ func wait(done chan StatusReport) error {
 			M.Unlock()
 
 			if left == 0 {
-				log.Printf("all %v(s) finished ok", s.Role)
-				return nil
+				log.Printf("all currently active %v(s) finished ok", s.Role)
+				//return nil
+				break
 			}
 
 			log.Printf("%d %v(s) to go", left, s.Role)

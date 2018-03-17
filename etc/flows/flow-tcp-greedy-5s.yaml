@@ -1,21 +1,27 @@
 label: tcp-greedy-5s
 
-# as time.Duration (see time.ParseDuration())
-when:
-  - 10ms
 
 collector: http://logstash:12345/
 
 client:
-  server-address: localhost
-  server-port: 5000
-  get-server-output: true
-  json: true
-  logfile: /tmp/tcp-greedy-client.log
-  time-s: 5
+  # as time.Duration (see time.ParseDuration() for the format)
+  when:
+    - 10s
+    - 20s
+  config:
+    server-address: localhost
+    server-port: 5000
+    get-server-output: true
+    json: true
+    #    XXX need to do something to make these log files unique
+    #    logfile: /tmp/tcp-greedy-client.log
+    time-s: 5
 
 server:
-  json: true
-  logfile: /tmp/tcp-greedy-server.log
-  server-port: 5000
-  one-off: true
+  when:
+    - 5s
+  config:
+    json: true
+    #    logfile: /tmp/tcp-greedy-server.log
+    server-port: 5000
+    one-off: false

@@ -37,6 +37,9 @@ func init() {
 
 	pflags.String("flows-dir", "", "folder with flow configuration files")
 	viper.BindPFlag("flows.dir", pflags.Lookup("flows-dir"))
+
+	pflags.String("scheduler-tick", "250ms", "scheduler granularity")
+	viper.BindPFlag("scheduler.tick", pflags.Lookup("scheduler-tick"))
 }
 
 func initConfig() {

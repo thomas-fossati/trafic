@@ -4,6 +4,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/thomas-fossati/trafic/config"
 )
@@ -11,10 +12,12 @@ import (
 type Runner struct {
 	Role    Role
 	Command *exec.Cmd
+	At      time.Duration
+	Label   string
 	Logger  *log.Logger
 }
 
-func NewRunner(role Role, log *log.Logger, cfg config.Configurer) (*Runner, error) {
+func NewRunner(role Role, log *log.Logger, at time.Duration, label string, cfg config.Configurer) (*Runner, error) {
 	args, err := cfg.ToArgs()
 	if err != nil {
 		return nil, err
@@ -23,6 +26,8 @@ func NewRunner(role Role, log *log.Logger, cfg config.Configurer) (*Runner, erro
 	return &Runner{
 		Role:    role,
 		Command: exec.Command("iperf3", args...),
+		At:      at,
+		Label:   label,
 		Logger:  log,
 	}, nil
 }

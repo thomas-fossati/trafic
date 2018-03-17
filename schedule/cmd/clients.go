@@ -16,5 +16,5 @@ func init() {
 }
 
 func clients(cmd *cobra.Command, args []string) {
-	runners(runner.RoleClient)
+	run(runner.RoleClient)
 }

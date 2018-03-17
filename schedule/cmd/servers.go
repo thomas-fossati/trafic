@@ -16,5 +16,5 @@ func init() {
 }
 
 func servers(cmd *cobra.Command, args []string) {
-	runners(runner.RoleServer)
+	run(runner.RoleServer)
 }

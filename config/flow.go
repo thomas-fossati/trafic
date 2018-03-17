@@ -7,12 +7,21 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+type FlowClient struct {
+	When   []time.Duration `yaml:"when"` // time.ParseDuration
+	Config ClientConfig    `yaml:"config"`
+}
+
+type FlowServer struct {
+	When   []time.Duration `yaml:"when"` // time.ParseDuration
+	Config ServerConfig    `yaml:"config"`
+}
+
 type FlowConfig struct {
-	Label     string          `yaml:"label"`
-	When      []time.Duration `yaml:"when"` // time.ParseDuration
-	Collector string          `yaml:"collector"`
-	ClientCfg ClientConfig    `yaml:"client"`
-	ServerCfg ServerConfig    `yaml:"server"`
+	Label     string     `yaml:"label"`
+	Collector string     `yaml:"collector"`
+	Client    FlowClient `yaml:"client"`
+	Server    FlowServer `yaml:"server"`
 }
 
 func NewFlowConfigFromYaml(buf []byte) (*FlowConfig, error) {
