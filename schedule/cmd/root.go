@@ -40,6 +40,9 @@ func init() {
 
 	pflags.String("scheduler-tick", "250ms", "scheduler granularity")
 	viper.BindPFlag("scheduler.tick", pflags.Lookup("scheduler-tick"))
+
+	pflags.String("http-stats", ":10000", "HTTP endpoint from where to pull runners' stats")
+	viper.BindPFlag("http.stats", pflags.Lookup("http-stats"))
 }
 
 func initConfig() {

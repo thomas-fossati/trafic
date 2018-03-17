@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -15,6 +17,8 @@ type Runner struct {
 	At      time.Duration
 	Label   string
 	Logger  *log.Logger
+	Stdout  bytes.Buffer
+	Stderr  bytes.Buffer
 }
 
 func NewRunner(role Role, log *log.Logger, at time.Duration, label string, cfg config.Configurer) (*Runner, error) {
@@ -36,14 +40,21 @@ func (r *Runner) Start() error {
 	r.Logger.Printf("Starting %s %s\n",
 		r.Command.Path, strings.Join(r.Command.Args[1:], " "))
 
+	// we want to capture output and error
+	r.Command.Stdout = &r.Stdout
+	r.Command.Stderr = &r.Stderr
+
 	return r.Command.Start()
 }
 
-func (r *Runner) Wait() error {
+func (r *Runner) Wait() (string, error) {
 	r.Logger.Printf("Waiting for %v (PID=%v) to complete\n",
 		r.Command.Path, r.Command.Process.Pid)
 
-	return r.Command.Wait()
+	fmt.Printf("RAW OUT: %v", r.Stdout)
+	fmt.Printf("RAW ERR: %v", r.Stderr)
+
+	return r.Stdout.String(), r.Command.Wait()
 }
 
 func (r *Runner) Kill() error {

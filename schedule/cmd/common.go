@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,6 +25,10 @@ type StatusReport struct {
 
 type Runners []runner.Runner
 type FlowConfigs []config.FlowConfig
+
+type RunnerStats struct {
+	out string
+}
 
 const (
 	DefaultSchedFrequency = (100 * time.Millisecond)
@@ -108,12 +113,33 @@ func run(role runner.Role) {
 		log.Fatalf("cannot load flows: %v", err)
 	}
 
-	done := make(chan StatusReport)
+	stats := make(chan RunnerStats)
+	go httpStats(viper.GetString("http.stats"), stats)
 
-	go sched(runners, log, done, role)
+	done := make(chan StatusReport)
+	go sched(role, runners, log, done, stats)
 
 	if err = wait(done); err != nil {
 		log.Printf("waiting: %v", err)
+	}
+}
+
+func httpStats(addrport string, runnerStats chan RunnerStats) {
+	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		var m string
+		select {
+		case rs := <-runnerStats:
+			m = rs.out
+		default:
+			m = "{}"
+		}
+
+		w.Write([]byte(m))
+	})
+
+	err := http.ListenAndServe(addrport, nil)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -144,7 +170,7 @@ func schedFreq(f string) (time.Duration, error) {
 	return time.ParseDuration(f)
 }
 
-func sched(runners Runners, log *log.Logger, done chan StatusReport, role runner.Role) {
+func sched(role runner.Role, runners Runners, log *log.Logger, done chan StatusReport, stats chan RunnerStats) {
 	tickFreq, err := schedFreq(viper.GetString(""))
 	if err != nil {
 		log.Fatalf("cannot set the scheduler tick frequency: %v", err)
@@ -182,7 +208,7 @@ func sched(runners Runners, log *log.Logger, done chan StatusReport, role runner
 				M.Unlock()
 
 				// Start watchdog for this iperf3 instance
-				go watchdog(runner, runner.Label, done)
+				go watchdog(runner, runner.Label, done, stats)
 
 				if i == len(runners)-1 {
 					// All runners have been scheduled, job done
@@ -203,8 +229,8 @@ func sched(runners Runners, log *log.Logger, done chan StatusReport, role runner
 	}
 }
 
-func watchdog(r runner.Runner, label string, done chan StatusReport) {
-	err := r.Wait()
+func watchdog(r runner.Runner, label string, done chan StatusReport, stats chan RunnerStats) {
+	out, err := r.Wait()
 	if err != nil {
 		log.Printf("reaping %s %s: %v", r.Role, label, err)
 	}
@@ -213,6 +239,12 @@ func watchdog(r runner.Runner, label string, done chan StatusReport) {
 	delete(R, label)
 	M.Unlock()
 
+	fmt.Println("OUT: ", out)
+
+	// send stats for this run to the HTTP endpoint
+	stats <- RunnerStats{out}
+
+	// send a status report for this run to the waiter
 	done <- StatusReport{label, r.Role, err}
 }
 
