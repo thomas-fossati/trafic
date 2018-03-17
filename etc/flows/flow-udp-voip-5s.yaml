@@ -24,5 +24,5 @@ server:
   config:
     server-port: 5001
     json: true
-    # logfile: /tmp/udp-voip-server.log
+    logfile: /dev/null
     one-off: false

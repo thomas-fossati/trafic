@@ -239,8 +239,6 @@ func watchdog(r runner.Runner, label string, done chan StatusReport, stats chan 
 	delete(R, label)
 	M.Unlock()
 
-	fmt.Println("OUT: ", out)
-
 	// send stats for this run to the HTTP endpoint
 	stats <- RunnerStats{out}
 

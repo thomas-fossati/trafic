@@ -22,6 +22,6 @@ server:
     - 5s
   config:
     json: true
-    #    logfile: /tmp/tcp-greedy-server.log
+    logfile: /dev/null
     server-port: 5000
     one-off: false
