@@ -88,7 +88,7 @@ type UDPFlowStats struct {
 			HostUser     float64 `json:"host_user"`
 			HostSystem   float64 `json:"host_system"`
 			RemoteTotal  float64 `json:"remote_total"`
-			RemoteUser   int     `json:"remote_user"`
+			RemoteUser   float64 `json:"remote_user"`
 			RemoteSystem float64 `json:"remote_system"`
 		} `json:"cpu_utilization_percent"`
 	} `json:"end"`
@@ -184,11 +184,11 @@ type UDPFlowStats struct {
 			} `json:"sum"`
 			CPUUtilizationPercent struct {
 				HostTotal    float64 `json:"host_total"`
-				HostUser     int     `json:"host_user"`
+				HostUser     float64 `json:"host_user"`
 				HostSystem   float64 `json:"host_system"`
-				RemoteTotal  int     `json:"remote_total"`
-				RemoteUser   int     `json:"remote_user"`
-				RemoteSystem int     `json:"remote_system"`
+				RemoteTotal  float64 `json:"remote_total"`
+				RemoteUser   float64 `json:"remote_user"`
+				RemoteSystem float64 `json:"remote_system"`
 			} `json:"cpu_utilization_percent"`
 		} `json:"end"`
 	} `json:"server_output_json"`
