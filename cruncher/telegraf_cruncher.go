@@ -3,6 +3,8 @@ package cruncher
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"time"
 )
 
 type TelegrafCruncher struct{}
@@ -31,16 +33,16 @@ func crunchTCP(tcpFlowStats TCPFlowStats) ([]byte, error) {
 	// TCPFlowSample contains a set of measures relative to a TCP flow, sampled
 	// in the [.Start, .End] period.
 	type TCPFlowSample struct {
-		ID          string  `json:"id"`
-		Start       float64 `json:"start"`
-		End         float64 `json:"stop"`
-		Bytes       int     `json:"bytes"`
-		Bps         float64 `json:"bps"`
-		Retransmits int     `json:"retransmits"`
-		SndCwnd     int     `json:"snd-cwnd"`
-		RttMs       float64 `json:"rtt-ms"`
-		RttVar      int     `json:"rtt-var"`
-		Pmtu        int     `json:"pmtu"`
+		ID             string  `json:"id"`
+		Timestamp      string  `json:"timestamp"`
+		SampleDuration float64 `json:"sample-duration-s"`
+		Bytes          int     `json:"bytes"`
+		Bps            float64 `json:"bps"`
+		Retransmits    int     `json:"retransmits"`
+		SndCwnd        int     `json:"snd-cwnd"`
+		RttMs          float64 `json:"rtt-ms"`
+		RttVar         int     `json:"rtt-var"`
+		Pmtu           int     `json:"pmtu"`
 	}
 
 	var tcpFlowSamples []TCPFlowSample
@@ -57,17 +59,21 @@ func crunchTCP(tcpFlowStats TCPFlowStats) ([]byte, error) {
 			}
 			flowID := fmt.Sprintf("%s-%d-%d", title, start, stream.Socket)
 
+			// format timestamps
+			tsec, tnsec := math.Modf(float64(start) + stream.Start)
+			timestamp := time.Unix(int64(tsec), int64(tnsec*(1e9))).String()
+
 			tcpFlowSample = TCPFlowSample{
-				ID:          flowID,
-				Start:       float64(start) + stream.Start,
-				End:         float64(start) + stream.End,
-				Bytes:       stream.Bytes,
-				Bps:         stream.BitsPerSecond,
-				Retransmits: stream.Retransmits,
-				SndCwnd:     stream.SndCwnd,
-				RttMs:       float64(stream.Rtt) / 1000,
-				RttVar:      stream.Rttvar,
-				Pmtu:        stream.Pmtu,
+				ID:             flowID,
+				Timestamp:      timestamp,
+				SampleDuration: stream.End - stream.Start,
+				Bytes:          stream.Bytes,
+				Bps:            stream.BitsPerSecond,
+				Retransmits:    stream.Retransmits,
+				SndCwnd:        stream.SndCwnd,
+				RttMs:          float64(stream.Rtt) / 1000,
+				RttVar:         stream.Rttvar,
+				Pmtu:           stream.Pmtu,
 			}
 		}
 
@@ -81,15 +87,15 @@ func crunchUDP(udpFlowStats UDPFlowStats) ([]byte, error) {
 	// UDPFlowSample contains a set of measures relative to a UDP flow, sampled
 	// in the [.Start, .End] period.
 	type UDPFlowSample struct {
-		ID          string  `json:"id"`
-		Start       float64 `json:"start"`
-		End         float64 `json:"end"`
-		Bytes       int     `json:"bytes"`
-		Bps         float64 `json:"bps"`
-		JitterMs    float64 `json:"jitter-ms"`
-		LostPackets int     `json:"lost-packets"`
-		LostPercent float64 `json:"lost-percent"`
-		Packets     int     `json:"packets"`
+		ID             string  `json:"id"`
+		Timestamp      string  `json:"timestamp"`
+		SampleDuration float64 `json:"sample-duration-s"`
+		Bytes          int     `json:"bytes"`
+		Bps            float64 `json:"bps"`
+		JitterMs       float64 `json:"jitter-ms"`
+		LostPackets    int     `json:"lost-packets"`
+		LostPercent    float64 `json:"lost-percent"`
+		Packets        int     `json:"packets"`
 	}
 
 	var udpFlowSamples []UDPFlowSample
@@ -106,16 +112,20 @@ func crunchUDP(udpFlowStats UDPFlowStats) ([]byte, error) {
 			}
 			flowID := fmt.Sprintf("%s-%d-%d", title, start, stream.Socket)
 
+			// format timestamps
+			tsec, tnsec := math.Modf(float64(start) + stream.Start)
+			timestamp := time.Unix(int64(tsec), int64(tnsec*(1e9))).String()
+
 			udpFlowSample = UDPFlowSample{
-				ID:          flowID,
-				Start:       float64(start) + stream.Start,
-				End:         float64(start) + stream.End,
-				Bytes:       stream.Bytes,
-				Bps:         stream.BitsPerSecond,
-				JitterMs:    stream.JitterMs,
-				LostPackets: stream.LostPackets,
-				LostPercent: stream.LostPercent,
-				Packets:     stream.Packets,
+				ID:             flowID,
+				Timestamp:      timestamp,
+				SampleDuration: stream.End - stream.Start,
+				Bytes:          stream.Bytes,
+				Bps:            stream.BitsPerSecond,
+				JitterMs:       stream.JitterMs,
+				LostPackets:    stream.LostPackets,
+				LostPercent:    stream.LostPercent,
+				Packets:        stream.Packets,
 			}
 		}
 

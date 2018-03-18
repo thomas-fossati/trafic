@@ -18,10 +18,9 @@ type FlowServer struct {
 }
 
 type FlowConfig struct {
-	Label     string     `yaml:"label"`
-	Collector string     `yaml:"collector"`
-	Client    FlowClient `yaml:"client"`
-	Server    FlowServer `yaml:"server"`
+	Label  string     `yaml:"label"`
+	Client FlowClient `yaml:"client"`
+	Server FlowServer `yaml:"server"`
 }
 
 func NewFlowConfigFromYaml(buf []byte) (*FlowConfig, error) {
