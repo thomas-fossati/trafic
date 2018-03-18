@@ -8,32 +8,35 @@ import (
 	"time"
 
 	"github.com/thomas-fossati/trafic/config"
+	"github.com/thomas-fossati/trafic/cruncher"
 )
 
 type Runner struct {
-	Role    Role
-	Command *exec.Cmd
-	At      time.Duration
-	Label   string
-	Logger  *log.Logger
-	Stdout  *bytes.Buffer
-	Stderr  *bytes.Buffer
+	Role     Role
+	Command  *exec.Cmd
+	At       time.Duration
+	Label    string
+	Logger   *log.Logger
+	Stdout   *bytes.Buffer
+	Stderr   *bytes.Buffer
+	Cruncher cruncher.Cruncher
 }
 
-func NewRunner(role Role, log *log.Logger, at time.Duration, label string, cfg config.Configurer) (*Runner, error) {
+func NewRunner(role Role, log *log.Logger, at time.Duration, label string, cfg config.Configurer, crunch cruncher.Cruncher) (*Runner, error) {
 	args, err := cfg.ToArgs()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Runner{
-		Role:    role,
-		Command: exec.Command("iperf3", args...),
-		At:      at,
-		Label:   label,
-		Logger:  log,
-		Stdout:  &bytes.Buffer{},
-		Stderr:  &bytes.Buffer{},
+		Role:     role,
+		Command:  exec.Command("iperf3", args...),
+		At:       at,
+		Label:    label,
+		Logger:   log,
+		Stdout:   &bytes.Buffer{},
+		Stderr:   &bytes.Buffer{},
+		Cruncher: crunch,
 	}, nil
 }
 
@@ -48,16 +51,21 @@ func (r *Runner) Start() error {
 	return r.Command.Start()
 }
 
-func (r *Runner) Wait() (string, error) {
+func (r *Runner) Wait() ([]byte, error) {
 	r.Logger.Printf("Waiting for %v (PID=%v) to complete\n",
 		r.Command.Path, r.Command.Process.Pid)
 
 	err := r.Command.Wait()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return r.Stdout.String(), nil
+	// Run test data through a filter if we have been configured to do so
+	if r.Cruncher != nil {
+		return r.Cruncher.Crunch(r.Stdout.Bytes())
+	}
+
+	return r.Stdout.Bytes(), nil
 }
 
 func (r *Runner) Kill() error {

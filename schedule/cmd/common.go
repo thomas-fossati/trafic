@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/thomas-fossati/trafic/config"
+	"github.com/thomas-fossati/trafic/cruncher"
 	"github.com/thomas-fossati/trafic/runner"
 )
 
@@ -149,7 +150,8 @@ func setupRunners(flows FlowConfigs, log *log.Logger, role runner.Role) (Runners
 	for _, flow := range flows {
 		for _, at := range atForRole(role, flow) {
 			cfg := configurerForRole(role, flow)
-			runner, err := runner.NewRunner(role, log, at, flow.Label, cfg)
+			cruncher := cruncher.NewTelegrafCruncher()
+			runner, err := runner.NewRunner(role, log, at, flow.Label, cfg, cruncher)
 			if err != nil {
 				log.Printf("cannot create %s %s: %v", role, flow.Label, err)
 				return nil, err
@@ -240,7 +242,7 @@ func watchdog(r runner.Runner, label string, done chan StatusReport, stats chan 
 	M.Unlock()
 
 	// send stats for this run to the HTTP endpoint
-	stats <- RunnerStats{out}
+	stats <- RunnerStats{string(out)}
 
 	// send a status report for this run to the waiter
 	done <- StatusReport{label, r.Role, err}
