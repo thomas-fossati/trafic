@@ -3,11 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
 )
 
+// TCPFlowSample contains a set of measures relative to a TCP flow, sampled
+// in the [.Start, .End] period.
 type TCPFlowSample struct {
 	ID          string  `json:"id"`
 	Start       float64 `json:"start"`
@@ -21,6 +20,8 @@ type TCPFlowSample struct {
 	Pmtu        int     `json:"pmtu"`
 }
 
+// UDPFlowSample contains a set of measures relative to a UDP flow, sampled
+// in the [.Start, .End] period.
 type UDPFlowSample struct {
 	ID          string  `json:"id"`
 	Start       float64 `json:"start"`
@@ -33,30 +34,21 @@ type UDPFlowSample struct {
 	Packets     int     `json:"packets"`
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		log.Fatal("missing (json) file")
-	}
-
-	raw, err := ioutil.ReadFile(os.Args[1])
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func Crunch(iPerf3JSONReport []byte) ([]byte, error) {
 	var tcpFlowStats TCPFlowStats
 	var udpFlowStats UDPFlowStats
 
-	err = json.Unmarshal([]byte(raw), &tcpFlowStats)
+	err := json.Unmarshal(iPerf3JSONReport, &tcpFlowStats)
 	if err == nil && tcpFlowStats.Start.TestStart.Protocol == "TCP" {
-		crunchTCP(tcpFlowStats)
-	} else if err = json.Unmarshal([]byte(raw), &udpFlowStats); err == nil {
-		crunchUDP(udpFlowStats)
+		return crunchTCP(tcpFlowStats)
+	} else if err = json.Unmarshal(iPerf3JSONReport, &udpFlowStats); err == nil {
+		return crunchUDP(udpFlowStats)
 	} else {
-		log.Fatal(err)
+		return nil, err
 	}
 }
 
-func crunchTCP(tcpFlowStats TCPFlowStats) error {
+func crunchTCP(tcpFlowStats TCPFlowStats) ([]byte, error) {
 	var tcpFlowSamples []TCPFlowSample
 	var tcpFlowSample TCPFlowSample
 
@@ -84,17 +76,10 @@ func crunchTCP(tcpFlowStats TCPFlowStats) error {
 		tcpFlowSamples = append(tcpFlowSamples, tcpFlowSample)
 	}
 
-	out, err := json.Marshal(tcpFlowSamples)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(out))
-
-	return nil
+	return json.Marshal(tcpFlowSamples)
 }
 
-func crunchUDP(udpFlowStats UDPFlowStats) error {
+func crunchUDP(udpFlowStats UDPFlowStats) ([]byte, error) {
 	var udpFlowSamples []UDPFlowSample
 	var udpFlowSample UDPFlowSample
 
@@ -121,12 +106,5 @@ func crunchUDP(udpFlowStats UDPFlowStats) error {
 		udpFlowSamples = append(udpFlowSamples, udpFlowSample)
 	}
 
-	out, err := json.Marshal(udpFlowSamples)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(out))
-
-	return nil
+	return json.Marshal(udpFlowSamples)
 }
