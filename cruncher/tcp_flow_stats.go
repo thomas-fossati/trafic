@@ -1,4 +1,4 @@
-package main
+package cruncher
 
 type TCPFlowStats struct {
 	Start struct {

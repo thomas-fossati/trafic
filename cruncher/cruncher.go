@@ -1,4 +1,4 @@
-package main
+package cruncher
 
 import (
 	"encoding/json"

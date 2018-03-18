@@ -1,4 +1,4 @@
-package main
+package cruncher
 
 type UDPFlowStats struct {
 	Start struct {
