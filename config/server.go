@@ -11,11 +11,14 @@ type ServerConfig struct {
 	CommonConfig `yaml:",inline"`
 }
 
+// The following CLI arguments are not exposed:
+// - daemon		suppress
+
 func (cfg *ServerConfig) ToArgs() ([]string, error) {
 	args := []string{"--server"}
 
 	args = AppendKeyVal(args, "--authorized-users-path", cfg.AuthUsersFile)
-	args = AppendKey(args, "--daemon", cfg.Daemon)
+	//	args = AppendKey(args, "--daemon", cfg.Daemon)
 	args = AppendKey(args, "--one-off", cfg.OneOff)
 	args = AppendKeyVal(args, "--pidfile", cfg.PidFile)
 	args = AppendKeyVal(args, "--rsa-private-key-path", cfg.RSAPrivKeyFile)

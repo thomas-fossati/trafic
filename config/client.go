@@ -35,6 +35,9 @@ type ClientConfig struct {
 	CommonConfig `yaml:",inline"`
 }
 
+// The following CLI arguments are not exposed:
+// - get-server-output	force (true)
+
 func (cfg *ClientConfig) ToArgs() ([]string, error) {
 	args := []string{"--client"}
 
@@ -58,11 +61,11 @@ func (cfg *ClientConfig) ToArgs() ([]string, error) {
 	args = AppendKeyVal(args, "--bytes", cfg.FlowBytes)
 	args = AppendKeyVal(args, "--time", cfg.FlowDuration)
 	args = AppendKeyVal(args, "--blockcount", cfg.FlowPackets)
-	args = AppendKey(args, "--get-server-output", cfg.GetServerOutput)
+	// args = AppendKey(args, "--get-server-output", cfg.GetServerOutput)
 	args = AppendKeyVal(args, "--set-mss", cfg.MSS)
 	args = AppendKeyVal(args, "--omit", cfg.OmitLeadingSecs)
 	args = AppendKeyVal(args, "--pacing-timer", cfg.PacingTimer)
-	args = AppendKeyVal(args, "--parallel", cfg.ParallelFlows)
+	args = AppendKeyVal(args, "--parallel", cfg.ParallelFlows) // to be determined
 	args = AppendKeyVal(args, "--rsa-public-key-path", cfg.RSAPubKeyFile)
 	args = AppendKey(args, "--reverse", cfg.ReverseDir)
 	args = AppendKeyVal(args, "--bitrate", cfg.TargetBitrate)

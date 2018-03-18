@@ -15,17 +15,26 @@ type CommonConfig struct {
 	Verbose        bool    `yaml:"verbose"`
 }
 
-func (cfg *CommonConfig) ToArgs(args []string) ([]string, error) {
-	args = AppendKeyVal(args, "--bind", cfg.BindInterface)
-	args = AppendKey(args, "--debug", cfg.Debug)
-	args = AppendKeyVal(args, "--file", cfg.ExchangedFile)
-	args = AppendKey(args, "--forceflush", cfg.ForceFlush)
-	args = AppendKey(args, "--json", cfg.JSON)
-	args = AppendKeyVal(args, "--logfile", cfg.LogFile)
-	args = AppendKeyVal(args, "--format", cfg.ReportFormat)
-	args = AppendKeyVal(args, "--interval", cfg.ReportInterval)
-	args = AppendKeyVal(args, "--port", cfg.ServerPort)
-	args = AppendKey(args, "--verbose", cfg.Verbose)
+// The following CLI arguments are not exposed:
+// - debug		suppressed
+// - json		forced (true)
+// - logfile	suppressed
+// - format		suppressed
+// - verbose	suppressed
 
-	return args, nil
+func (cfg *CommonConfig) ToArgs(args []string) ([]string, error) {
+	cargs := []string{"--json"}
+
+	cargs = AppendKeyVal(cargs, "--bind", cfg.BindInterface)
+	//	args = AppendKey(cargs, "--debug", cfg.Debug)
+	cargs = AppendKeyVal(cargs, "--file", cfg.ExchangedFile)
+	cargs = AppendKey(cargs, "--forceflush", cfg.ForceFlush)
+	//	args = AppendKey(cargs, "--json", cfg.JSON)
+	//	args = AppendKeyVal(cargs, "--logfile", cfg.LogFile)
+	//	args = AppendKeyVal(cargs, "--format", cfg.ReportFormat)
+	cargs = AppendKeyVal(cargs, "--interval", cfg.ReportInterval)
+	cargs = AppendKeyVal(cargs, "--port", cfg.ServerPort)
+	//	args = AppendKey(cargs, "--verbose", cfg.Verbose)
+
+	return append(args, cargs...), nil
 }

@@ -50,8 +50,12 @@ func crunchTCP(tcpFlowStats TCPFlowStats) ([]byte, error) {
 
 	for _, interval := range tcpFlowStats.Intervals {
 		for _, stream := range interval.Streams {
-			flowID := fmt.Sprintf("%s-%d-%d",
-				tcpFlowStats.Title, start, stream.Socket)
+			// Use the auto-generated cookie if title has not been explicitly set
+			title := tcpFlowStats.Title
+			if title == "" {
+				title = tcpFlowStats.Start.Cookie
+			}
+			flowID := fmt.Sprintf("%s-%d-%d", title, start, stream.Socket)
 
 			tcpFlowSample = TCPFlowSample{
 				ID:          flowID,
@@ -95,8 +99,12 @@ func crunchUDP(udpFlowStats UDPFlowStats) ([]byte, error) {
 
 	for _, interval := range udpFlowStats.ServerOutputJSON.Intervals {
 		for _, stream := range interval.Streams {
-			flowID := fmt.Sprintf("%s-%d-%d",
-				udpFlowStats.Title, start, stream.Socket)
+			// Use the auto-generated cookie if title has not been explicitly set
+			title := udpFlowStats.Title
+			if title == "" {
+				title = udpFlowStats.Start.Cookie
+			}
+			flowID := fmt.Sprintf("%s-%d-%d", title, start, stream.Socket)
 
 			udpFlowSample = UDPFlowSample{
 				ID:          flowID,
