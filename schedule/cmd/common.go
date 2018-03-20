@@ -114,7 +114,10 @@ func run(role runner.Role) {
 		log.Fatalf("cannot load flows: %v", err)
 	}
 
-	stats := make(chan RunnerStats)
+	// XXX this queue is consumed by Telegraf, but what if there is no
+	// consumer?  The runners will not be .  We should probably do something
+	// different here...
+	stats := make(chan RunnerStats, 1024)
 	go httpStats(viper.GetString("http.stats"), stats)
 
 	done := make(chan StatusReport)
@@ -173,7 +176,7 @@ func schedFreq(f string) (time.Duration, error) {
 }
 
 func sched(role runner.Role, runners Runners, log *log.Logger, done chan StatusReport, stats chan RunnerStats) {
-	tickFreq, err := schedFreq(viper.GetString(""))
+	tickFreq, err := schedFreq(viper.GetString("schedule.tick"))
 	if err != nil {
 		log.Fatalf("cannot set the scheduler tick frequency: %v", err)
 	}
@@ -209,7 +212,7 @@ func sched(role runner.Role, runners Runners, log *log.Logger, done chan StatusR
 				R[runner.Label] = runner
 				M.Unlock()
 
-				// Start watchdog for this iperf3 instance
+				// Start a watchdog for this iperf3 instance
 				go watchdog(runner, runner.Label, done, stats)
 
 				if i == len(runners)-1 {
