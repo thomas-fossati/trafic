@@ -29,6 +29,17 @@ func (t *TelegrafCruncher) Crunch(j []byte) ([]byte, error) {
 	}
 }
 
+func formatFlowID(title string, cookie string, start int, sd int) string {
+	// Use the auto-generated cookie if title has not been explicitly set
+	if title == "" {
+		title = cookie
+	}
+
+	flowID := fmt.Sprintf("%s-%d-%d", title, start, sd)
+
+	return flowID
+}
+
 func crunchTCP(tcpFlowStats TCPFlowStats) ([]byte, error) {
 	// TCPFlowSample contains a set of measures relative to a TCP flow, sampled
 	// in the [.Start, .End] period.
@@ -52,16 +63,9 @@ func crunchTCP(tcpFlowStats TCPFlowStats) ([]byte, error) {
 
 	for _, interval := range tcpFlowStats.Intervals {
 		for _, stream := range interval.Streams {
-			// Use the auto-generated cookie if title has not been explicitly set
-			title := tcpFlowStats.Title
-			if title == "" {
-				title = tcpFlowStats.Start.Cookie
-			}
-			flowID := fmt.Sprintf("%s-%d-%d", title, start, stream.Socket)
+			flowID := formatFlowID(tcpFlowStats.Title, tcpFlowStats.Start.Cookie, start, stream.Socket)
 
-			// format timestamps
-			tsec, tnsec := math.Modf(float64(start) + stream.Start)
-			timestamp := time.Unix(int64(tsec), int64(tnsec*(1e9))).String()
+			timestamp := formatTimestamp(start, stream.Start)
 
 			tcpFlowSample = TCPFlowSample{
 				ID:             flowID,
@@ -81,6 +85,12 @@ func crunchTCP(tcpFlowStats TCPFlowStats) ([]byte, error) {
 	}
 
 	return json.Marshal(tcpFlowSamples)
+}
+
+func formatTimestamp(flowStart int, sampleStart float64) string {
+	tsec, tnsec := math.Modf(float64(flowStart) + sampleStart)
+
+	return time.Unix(int64(tsec), int64(tnsec*(1e9))).String()
 }
 
 func crunchUDP(udpFlowStats UDPFlowStats) ([]byte, error) {
@@ -105,16 +115,9 @@ func crunchUDP(udpFlowStats UDPFlowStats) ([]byte, error) {
 
 	for _, interval := range udpFlowStats.ServerOutputJSON.Intervals {
 		for _, stream := range interval.Streams {
-			// Use the auto-generated cookie if title has not been explicitly set
-			title := udpFlowStats.Title
-			if title == "" {
-				title = udpFlowStats.Start.Cookie
-			}
-			flowID := fmt.Sprintf("%s-%d-%d", title, start, stream.Socket)
+			flowID := formatFlowID(udpFlowStats.Title, udpFlowStats.Start.Cookie, start, stream.Socket)
 
-			// format timestamps
-			tsec, tnsec := math.Modf(float64(start) + stream.Start)
-			timestamp := time.Unix(int64(tsec), int64(tnsec*(1e9))).String()
+			timestamp := formatTimestamp(start, stream.Start)
 
 			udpFlowSample = UDPFlowSample{
 				ID:             flowID,
